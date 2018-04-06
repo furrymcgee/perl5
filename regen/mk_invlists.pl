@@ -2481,6 +2481,7 @@ for my $charset (get_supported_code_pages()) {
     }
     end_file_pound_if;
     print $out_fh "\n" . get_conditional_compile_line_end();
+    last;
 }
 
 switch_pound_if('Boundary_pair_tables', 'PERL_IN_REGEXEC_C');

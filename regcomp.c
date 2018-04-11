@@ -5619,6 +5619,7 @@ Perl_re_printf( aTHX_  "LHS=%" UVuf " RHS=%" UVuf "\n",
                     /* FALLTHROUGH */
 		case POSIXA:
                     assert(FLAGS(scan) != _CC_ASCII);
+                    /* XXX can have an array for non-X, and use that directly */
                     _invlist_intersection(PL_XPosix_ptrs[FLAGS(scan)],
                                           PL_XPosix_ptrs[_CC_ASCII],
                                           &my_invlist);
@@ -16706,7 +16707,7 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
                 char *i;
 
 
-                /* We will handle any undefined properties ourselves */
+                /* XXX move We will handle any undefined properties ourselves */
                 U8 swash_init_flags = _CORE_SWASH_INIT_RETURN_IF_UNDEF
                                        /* And we actually would prefer to get
                                         * the straight inversion list of the
@@ -16750,13 +16751,6 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
 		    while (isSPACE(*(RExC_parse + n - 1)))
 		        n--;
 
-                    for (i = RExC_parse; i < RExC_parse + n; i++) {
-                        if (isCNTRL(*i) && *i != '\t') {
-                            char * name = Perl_form(aTHX_ "%.*s", (int)n, RExC_parse);
-                            RExC_parse = e + 1;
-                            vFAIL2("Can't find Unicode property definition \"%s\"", name);
-                        }
-                    }
 		}   /* The \p isn't immediately followed by a '{' */
 		else if (! isALPHA(*RExC_parse)) {
                     RExC_parse += (UTF) ? UTF8SKIP(RExC_parse) : 1;
@@ -16782,7 +16776,10 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
                         }
                     }
                     else {
+                        /* XXX Indent? */
 
+                        /* XXX blead -Dr -I../lib -le 'qr/\p{Is_Other_Alphabetic=F}/' should fail at compile time because of the equals sign */
+                  
                     /* Try to get the definition of the property into
                      * <invlist>.  If /i is in effect, the effective property
                      * will have its name be <__NAME_i>.  The design is
@@ -16790,6 +16787,14 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
                      * 2f833f5208e26b208886e51e09e2c072b5eabb46 */
                     name = savepv(Perl_form(aTHX_ "%.*s", (int)n, RExC_parse));
                     SAVEFREEPV(name);
+
+                    for (i = RExC_parse; i < RExC_parse + n; i++) {
+                        if (isCNTRL(*i) && *i != '\t') {
+                            RExC_parse = e + 1;
+                            vFAIL2("Can't find Unicode property definition \"%s\"", name);
+                        }
+                    }
+
                     if (FOLD) {
                         lookup_name = savepv(Perl_form(aTHX_ "__%s_i", name));
 
@@ -16899,10 +16904,13 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
                         {
                             has_user_defined_property = TRUE;
                         }
+                        /*
+                        PerlIO_printf(Perl_debug_log, "%s:%d: swash was successful for \"%s\"\n", __FILE__, __LINE__, name);
+                        */
                     }
                     }
                     if (invlist) {
-                        if (! has_user_defined_property &&
+                        if (! has_user_defined_property && 
                             /* We warn on matching an above-Unicode code point
                              * if the match would return true, except don't
                              * warn for \p{All}, which has exactly one element
@@ -16913,7 +16921,6 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
                         {
                             warn_super = TRUE;
                         }
-
 
                         /* Invert if asking for the complement */
                         if (value == 'P') {
@@ -18032,6 +18039,7 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
         if (AT_LEAST_ASCII_RESTRICTED) {
 
             /* Under /a and /aa, nothing above ASCII matches these */
+            /* XXX can have an array for non-X, and use that directly, maybe */
             if (posixes) {
                 _invlist_intersection(posixes,
                                     PL_XPosix_ptrs[_CC_ASCII],

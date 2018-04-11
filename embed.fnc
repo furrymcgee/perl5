@@ -984,6 +984,7 @@ EMiR	|char*|form_short_octal_warning|NN const char * const s  \
 				|const STRLEN len
 EiRn	|I32	|regcurly	|NN const char *s
 #endif
+Epn	|int	|uniprop_lookup	|NN const char * tokstr|const Size_t len
 Apd	|UV	|grok_hex	|NN const char* start|NN STRLEN* len_p|NN I32* flags|NULLOK NV *result
 Apd	|int	|grok_infnan	|NN const char** sp|NN const char *send
 Apd	|int	|grok_number	|NN const char *pv|STRLEN len|NULLOK UV *valuep
@@ -1895,6 +1896,7 @@ ApM	|U8*	|uvoffuni_to_utf8_flags_msgs|NN U8 *d|UV uv|const UV flags|NULLOK HV** 
 Ap	|U8*	|uvuni_to_utf8_flags	|NN U8 *d|UV uv|UV flags
 Apd	|char*	|pv_uni_display	|NN SV *dsv|NN const U8 *spv|STRLEN len|STRLEN pvlim|UV flags
 ApdR	|char*	|sv_uni_display	|NN SV *dsv|NN SV *ssv|STRLEN pvlim|UV flags
+: XXX maybe some functions no longer need interp var
 EXpR	|Size_t	|_inverse_folds	|const UV cp				    \
 				|NN unsigned int * first_folds_to	    \
 				|NN const unsigned int ** remaining_folds_to

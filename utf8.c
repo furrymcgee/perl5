@@ -3857,13 +3857,15 @@ S_check_and_deprecate(pTHX_ const U8 *p,
  * function can start with the common start macro, then finish with its special
  * handling; while the other three cases can just use the common end macro.
  *
- * The algorithm is to use the proper (passed in) macro or function to change
- * the case for code points that are below 256.  The macro is used if using
- * locale rules for the case change; the function if not.  If the code point is
- * above 255, it is computed from the input UTF-8, and another macro is called
- * to do the conversion.  If necessary, the output is converted to UTF-8.  If
- * using a locale, we have to check that the change did not cross the 255/256
- * boundary, see check_locale_boundary_crossing() for further details.
+ * The algorithm is to use the proper (passed in) L1 macro or L1 function to
+ * change the case for code points that are below 256.  The L1 macro is used if
+ * using locale rules for the case change; the L1 function if not.  If the code
+ * point is above 255, it is computed from the input UTF-8, and another macro
+ * XXX
+ * is called to do the conversion.  If necessary, the output is converted to
+ * UTF-8.  If using a locale, we have to check that the change did not cross
+ * the 255/256 boundary, see check_locale_boundary_crossing() for further
+ * details.
  *
  * The macros are split with the correct case change for the below-256 case
  * stored into 'result', and in the middle of an else clause for the above-255
@@ -5867,55 +5869,306 @@ Perl_init_uniprops(pTHX)
 {
     /* Set up the inversion list global variables */
 
-    PL_XPosix_ptrs[_CC_ASCII] = _new_invlist_C_array(ASCII_invlist);
-    PL_XPosix_ptrs[_CC_ALPHANUMERIC] = _new_invlist_C_array(XPosixAlnum_invlist);
-    PL_XPosix_ptrs[_CC_ALPHA] = _new_invlist_C_array(XPosixAlpha_invlist);
-    PL_XPosix_ptrs[_CC_BLANK] = _new_invlist_C_array(XPosixBlank_invlist);
-    PL_XPosix_ptrs[_CC_CASED] =  _new_invlist_C_array(Cased_invlist);
-    PL_XPosix_ptrs[_CC_CNTRL] = _new_invlist_C_array(XPosixCntrl_invlist);
-    PL_XPosix_ptrs[_CC_DIGIT] = _new_invlist_C_array(XPosixDigit_invlist);
-    PL_XPosix_ptrs[_CC_GRAPH] = _new_invlist_C_array(XPosixGraph_invlist);
-    PL_XPosix_ptrs[_CC_LOWER] = _new_invlist_C_array(XPosixLower_invlist);
-    PL_XPosix_ptrs[_CC_PRINT] = _new_invlist_C_array(XPosixPrint_invlist);
-    PL_XPosix_ptrs[_CC_PUNCT] = _new_invlist_C_array(XPosixPunct_invlist);
-    PL_XPosix_ptrs[_CC_SPACE] = _new_invlist_C_array(XPerlSpace_invlist);
-    PL_XPosix_ptrs[_CC_UPPER] = _new_invlist_C_array(XPosixUpper_invlist);
-    PL_XPosix_ptrs[_CC_VERTSPACE] = _new_invlist_C_array(VertSpace_invlist);
-    PL_XPosix_ptrs[_CC_WORDCHAR] = _new_invlist_C_array(XPosixWord_invlist);
-    PL_XPosix_ptrs[_CC_XDIGIT] = _new_invlist_C_array(XPosixXDigit_invlist);
+    PL_XPosix_ptrs[_CC_ASCII] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_ASCII]);
+    PL_XPosix_ptrs[_CC_ALPHANUMERIC] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXALNUM]);
+    PL_XPosix_ptrs[_CC_ALPHA] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXALPHA]);
+    PL_XPosix_ptrs[_CC_BLANK] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXBLANK]);
+    PL_XPosix_ptrs[_CC_CASED] =  _new_invlist_C_array(PL_uni_prop_ptrs[PL_CASED]);
+    PL_XPosix_ptrs[_CC_CNTRL] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXCNTRL]);
+    PL_XPosix_ptrs[_CC_DIGIT] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXDIGIT]);
+    PL_XPosix_ptrs[_CC_GRAPH] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXGRAPH]);
+    PL_XPosix_ptrs[_CC_LOWER] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXLOWER]);
+    PL_XPosix_ptrs[_CC_PRINT] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXPRINT]);
+    PL_XPosix_ptrs[_CC_PUNCT] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXPUNCT]);
+    PL_XPosix_ptrs[_CC_SPACE] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPERLSPACE]);
+    PL_XPosix_ptrs[_CC_UPPER] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXUPPER]);
+    PL_XPosix_ptrs[_CC_VERTSPACE] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_VERTSPACE]);
+    PL_XPosix_ptrs[_CC_WORDCHAR] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXWORD]);
+    PL_XPosix_ptrs[_CC_XDIGIT] = _new_invlist_C_array(PL_uni_prop_ptrs[PL_XPOSIXXDIGIT]);
+
+    PL_AboveLatin1 = _new_invlist_C_array(AboveLatin1_invlist);
+    PL_Latin1 = _new_invlist_C_array(Latin1_invlist);
+
     PL_GCB_invlist = _new_invlist_C_array(_Perl_GCB_invlist);
     PL_SB_invlist = _new_invlist_C_array(_Perl_SB_invlist);
     PL_WB_invlist = _new_invlist_C_array(_Perl_WB_invlist);
     PL_LB_invlist = _new_invlist_C_array(_Perl_LB_invlist);
-    PL_Assigned_invlist = _new_invlist_C_array(Assigned_invlist);
     PL_SCX_invlist = _new_invlist_C_array(_Perl_SCX_invlist);
+    PL_UpperLatin1 = _new_invlist_C_array(UpperLatin1_invlist);
+    PL_NonL1NonFinalFold = _new_invlist_C_array(
+                                            NonL1_Perl_Non_Final_Folds_invlist);
+
+    PL_Assigned_invlist = _new_invlist_C_array(PL_uni_prop_ptrs[PL_ASSIGNED]);
+    PL_utf8_perl_idstart = _new_invlist_C_array(PL_uni_prop_ptrs[PL__PERL_IDSTART]);
+    PL_utf8_perl_idcont = _new_invlist_C_array(PL_uni_prop_ptrs[PL__PERL_IDCONT]);
+    PL_utf8_foldable = _new_invlist_C_array(PL_uni_prop_ptrs[PL__PERL_ANY_FOLDS]);
+    PL_HasMultiCharFold = _new_invlist_C_array(PL_uni_prop_ptrs[
+                                            PL__PERL_FOLDS_TO_MULTI_CHAR]);
+    PL_utf8_charname_begin = _new_invlist_C_array(PL_uni_prop_ptrs[PL__PERL_CHARNAME_BEGIN]);
+    PL_utf8_charname_continue = _new_invlist_C_array(PL_uni_prop_ptrs[PL__PERL_CHARNAME_CONTINUE]);
+
     PL_utf8_toupper = _new_invlist_C_array(Uppercase_Mapping_invlist);
     PL_utf8_tolower = _new_invlist_C_array(Lowercase_Mapping_invlist);
     PL_utf8_totitle = _new_invlist_C_array(Titlecase_Mapping_invlist);
     PL_utf8_tofold = _new_invlist_C_array(Case_Folding_invlist);
     PL_utf8_tosimplefold = _new_invlist_C_array(Simple_Case_Folding_invlist);
-    PL_utf8_perl_idstart = _new_invlist_C_array(_Perl_IDStart_invlist);
-    PL_utf8_perl_idcont = _new_invlist_C_array(_Perl_IDCont_invlist);
-    PL_AboveLatin1 = _new_invlist_C_array(AboveLatin1_invlist);
-    PL_Latin1 = _new_invlist_C_array(Latin1_invlist);
-    PL_UpperLatin1 = _new_invlist_C_array(UpperLatin1_invlist);
-    PL_utf8_foldable = _new_invlist_C_array(_Perl_Any_Folds_invlist);
-    PL_HasMultiCharFold = _new_invlist_C_array(
-                                            _Perl_Folds_To_Multi_Char_invlist);
-    PL_NonL1NonFinalFold = _new_invlist_C_array(
-                                            NonL1_Perl_Non_Final_Folds_invlist);
-    PL_utf8_charname_begin = _new_invlist_C_array(_Perl_Charname_Begin_invlist);
-    PL_utf8_charname_continue = _new_invlist_C_array(_Perl_Charname_Continue_invlist);
     PL_utf8_foldclosures = _new_invlist_C_array(_Perl_IVCF_invlist);
 }
 
 SV *
 Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const bool to_fold, bool * invert)
 {
+    char* lookup_name;
+    bool stricter = FALSE;
+    unsigned int i;
+    unsigned int j = 0;
+    int equals_pos = -1;
+    int table_index = 0;
+    bool starts_with_In_or_Is = FALSE;
+    Size_t lookup_offset = 0;
 
     PERL_ARGS_ASSERT_PARSE_UNIPROP_STRING;
 
-    return NULL;
+    Newx(lookup_name, len, char);
+    SAVEFREEPV(lookup_name);
+    for (i = 0; i < len; i++) {
+        char cur = name[i];
+        if (cur == '-' || cur == '_' || isSPACE(cur)) {
+            continue;
+        }
+
+        if (isUPPER(cur)) {
+            lookup_name[j++] = toLOWER(cur);
+            continue;
+        }
+
+        if (cur == ':') {
+            if (i < len - 1 && name[i+1] == ':') {
+                return NULL;
+            }
+            cur = '=';
+        }
+
+        lookup_name[j++] = cur;
+
+        if (cur != '=') {
+            continue;
+        }
+
+        equals_pos = j;
+
+        assert(! stricter);
+
+        /* Space immediately after the '=' is ignored */
+        i++;
+        for (; i < len; i++) {
+            if (! isSPACE(name[i])) {
+                break;
+            }
+        }
+
+        if (memBEGINPs(lookup_name, len, "is")) {
+            lookup_offset = 2;
+        }
+
+        if (   memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "canonicalcombiningclass")
+            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "ccc")
+            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "numericvalue")
+            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "nv")
+            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "age")
+            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "in")
+            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "presentin"))
+        {
+            unsigned int k;
+
+            stricter = TRUE;
+            for (k = i; k < len; k++) {
+                if (isALPHA(name[k])) {
+                    stricter = FALSE;
+                    break;
+                }
+            }
+        }
+
+        if (stricter) {
+            if (name[i] == '+') {
+                i++;
+            }
+            else if (name[i] == '-') {
+                lookup_name[j++] = '-';
+                i++;
+            }
+
+            /* Skip leading zeros including underscores separating digits */
+            for (; i < len - 1; i++) {
+                if (   name[i] != '0'
+                    && (name[i] != '_' || ! isDIGIT(name[i+1])))
+                {
+                    break;
+                }
+            }
+        }
+
+        break;
+    }
+
+    /* Here, we are either done with the whole property name, if it was simple;
+     * or are positioned to look at the rhs if it is compound.  Parse the
+     * latter case.  And in the former case, first see if it is a property that
+     * has stricter parsing rules, and if so we need to reparse using those.
+     * These are hard-coded here, and inspection has shown that they can't be
+     * confused with something else, so it's ok to ascertain that a strict form
+     * was meant while looking at the loose result */
+
+    if (       equals_pos < 0
+        && (   (   memBEGINPs(lookup_name, j, "perl")
+                && memNEs(lookup_name + 4, j - 4, "space")
+                && memNEs(lookup_name + 4, j - 4, "word"))
+            || memEQs(lookup_name, j, "canondcij")
+            || memEQs(lookup_name, j, "caseignorable")
+            || memEQs(lookup_name, j, "combabove")))
+    {
+        stricter = TRUE;
+        i = j = 0;
+    }
+
+    for (; i < len; i++) {
+        char cur = name[i];
+
+        if (isUPPER(cur)) {
+            lookup_name[j++] = toLOWER(cur);
+            continue;
+        }
+
+        /* An underscore is skipped, but not under strict rules unless it
+         * separates two digits */
+        if (cur == '_') {
+            if (    stricter
+                && (     i == 0 || (int) i == equals_pos || i == len- 1
+                    || ! isDIGIT(name[i-1])|| ! isDIGIT(name[i-1])))
+            {
+                lookup_name[j++] = '_';
+            }
+            continue;
+        }
+
+        if (cur == '-' && ! stricter) {
+            continue;
+        }
+
+        /* XXX Bug in documentation.  It says white space skipped adjacent to
+         * non-word char.  Maybe we should, but shouldn't skip it next to a dot
+         * in a number */
+        if (isSPACE(cur) && ! stricter) {
+            continue;
+        }
+
+        lookup_name[j++] = cur;
+
+        /* A slash in the 'numeric value' property indicates that what follows
+         * is a denominator.  It can have a leading '+' and '0's that should be
+         * skipped */
+        if (cur == '/' && (   memEQs(lookup_name + lookup_offset, equals_pos - lookup_offset, "nv=")
+                           || memEQs(lookup_name + lookup_offset, equals_pos - lookup_offset, "numericvalue=")))
+        {
+            i++;
+            if (i < len && name[i] == '+') {
+                i++;
+            }
+
+            /* Skip leading zeros including underscores separating digits */
+            for (; i < len - 1; i++) {
+                if (   name[i] != '0'
+                    && (name[i] != '_' || ! isDIGIT(name[i+1])))
+                {
+                    break;
+                }
+            }
+
+            /* Store the first real character in the denominator */
+            lookup_name[j++] = name[i];
+        }
+    }
+
+    /* This special case is grandfathered in: 'L_' and 'GC=L_' are accepted and
+     * different from without the underscores.  */
+    if (  (   UNLIKELY(memEQs(lookup_name, j, "l"))
+            || UNLIKELY(memEQs(lookup_name, j, "gc=l")))
+        && UNLIKELY(name[len-1] == '_'))
+    {
+        lookup_name[j++] = '&';
+    }
+    else if (   len > 2
+                && name[0] == 'I'
+                && (   name[1] == 'n'
+                    || name[1] == 's'))
+    {
+        if (equals_pos < 0 && get_cvn_flags(name, len, GV_NOTQUAL) != NULL) {
+            return NULL;
+        }
+
+        /* Unclear XXX if this is correct.  simple ones already have 'is' rules.  Why not compound? */
+        starts_with_In_or_Is = true;
+    }
+
+    table_index = uniprop_lookup(lookup_name, j);
+    if (table_index == 0) {
+        if (! starts_with_In_or_Is) {
+            return NULL;
+        }
+
+        lookup_name += 2;
+        j -= 2;
+        table_index = uniprop_lookup(lookup_name, j);
+        if (table_index == 0) {
+            return NULL;
+        }
+    }
+
+    /* A negative return signifies that the real index is the absolute value,
+     * but the result needs to be inverted */
+    if (table_index < 0) {
+        *invert = TRUE;
+        table_index = -table_index;
+    }
+    else {
+        *invert = FALSE;
+    }
+
+    /* Out-of band indices indicate a deprecated property.  The proper index is
+     * modulo it and the table size.  And dividing by the table size yields
+     * an offset into a table constructed to contain the corresponding warning
+     * message */
+    if (table_index > MAX_UNI_KEYWORD_INDEX) {
+        Size_t warning_offset = table_index / MAX_UNI_KEYWORD_INDEX;
+        table_index %= MAX_UNI_KEYWORD_INDEX;
+        /* XXX should be WARN_REGEXP Change in 5.29 */
+        Perl_ck_warner_d(aTHX_ packWARN(WARN_DEPRECATED),
+                "Use of '%.*s' in \\p{} or \\P{} is deprecated because: %s",
+                (int) len, name, deprecated_property_msgs[warning_offset]);
+    }
+
+    if (to_fold) {
+        if (   table_index == PL_UPPER
+            || table_index == PL_LOWER
+            || table_index == PL_TITLE)
+        {
+            table_index = PL_CASED;
+        }
+        else if (   table_index == PL_UPPERCASELETTER
+                || table_index == PL_LOWERCASELETTER
+                || table_index == PL_TITLECASELETTER)
+        {
+            table_index = PL_CASEDLETTER;
+        }
+        else if (   table_index == PL_POSIXUPPER
+                || table_index == PL_POSIXLOWER)
+        {
+            table_index = PL_POSIXALPHA;
+        }
+    }
+
+    return _new_invlist_C_array(PL_uni_prop_ptrs[table_index]);
 }
 
 /*

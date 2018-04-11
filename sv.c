@@ -12560,6 +12560,8 @@ Perl_sv_vcatpvfn_flags(pTHX_ SV *const sv, const char *const pat, const STRLEN p
                         case 't':  iv = va_arg(*args, ptrdiff_t);  break;
 #endif
                         default:   iv = va_arg(*args, int);        break;
+                                   /* On windows, warning C4244: '=' : conversion from 'PERL_INTMAX_T' to 'I
+     V', possible loss of data */
                         case 'j':  iv = va_arg(*args, PERL_INTMAX_T); break;
                         case 'q':
 #if IVSIZE >= 8

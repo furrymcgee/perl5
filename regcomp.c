@@ -16904,9 +16904,7 @@ S_regclass(pTHX_ RExC_state_t *pRExC_state, I32 *flagp, U32 depth,
                         {
                             has_user_defined_property = TRUE;
                         }
-                        /*
-                        PerlIO_printf(Perl_debug_log, "%s:%d: swash was successful for \"%s\"\n", __FILE__, __LINE__, name);
-                        */
+                        else PerlIO_printf(Perl_debug_log, "%s:%d: swash was successful for \"%s\"\n", __FILE__, __LINE__, name);
                     }
                     }
                     if (invlist) {

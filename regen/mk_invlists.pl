@@ -2717,21 +2717,33 @@ for my $charset (get_supported_code_pages()) {
                                                  'PERL_IN_UNI_KEYWORDS_C',
                                                ]);
 
-    print STDERR Dumper \@deprecated_messages;
-    print STDERR Dumper \%deprecated_tags;
     my @enums = sort values %enums;
+
+    # Save a copy of these before modification
     my @invlist_names = map { "${_}_invlist" } @enums;
-    my $seen_deprecated = 0;
-    foreach my $enum (@enums) {
-        if (grep { $_ eq $enum } keys %deprecated_tags) {
-            my $revised_enum = "${enum}_perl_aux";
-            if (! $seen_deprecated) {
-                $seen_deprecated = 1;
-                print $out_fh "\n";
+
+    # Post-process the enums for deprecated properties.
+    if (scalar keys %deprecated_tags) {
+        my $seen_deprecated = 0;
+        foreach my $enum (@enums) {
+            if (grep { $_ eq $enum } keys %deprecated_tags) {
+
+                # Change the enum name for this deprecated property to a
+                # munged one to act as a placeholder in the typedef.  Then
+                # make the real name be a #define whose value is such that
+                # its modulus with the number of enums yields the index into
+                # the table occupied by the placeholder.  And so that dividing
+                # the #define value by the table length gives an index into
+                # the table of deprecation messages for the corresponding
+                # warning.
+                my $revised_enum = "${enum}_perl_aux";
+                if (! $seen_deprecated) {
+                    $seen_deprecated = 1;
+                    print $out_fh "\n";
+                }
+                print $out_fh "#define $enum ($revised_enum + (MAX_UNI_KEYWORD_INDEX * $deprecated_tags{$enum}))\n";
+                $enum = $revised_enum;
             }
-            print $out_fh "#define $enum ($revised_enum + (MAX_UNI_KEYWORD_INDEX * $deprecated_tags{$enum}))\n";
-            $enum = $revised_enum;
-            print STDERR __LINE__, ": $enum\n";
         }
     }
 

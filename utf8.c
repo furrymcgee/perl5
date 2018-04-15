@@ -5918,6 +5918,18 @@ Perl_init_uniprops(pTHX)
 SV *
 Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const bool to_fold, bool * invert)
 {
+    /* Parse the interior of \p{} passed to this in 'name' with length 'len',
+     * and return an inversion list if a property with 'name' is found, or NULL
+     * if not.  'name' point to the input with leading and trailing space trimmed.
+     * 'to_fold' indicates if /i is in effect.
+     *
+     * When the return is an inversion list, '*invert' will be set to a boolean
+     * indicating if it should be inverted or not
+     *
+     * This currently doesn't handle all cases.  A NULL return indicates the
+     * caller should try a different approach
+     */
+
     char* lookup_name;
     bool stricter = FALSE;
     unsigned int i;
@@ -5929,19 +5941,33 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
 
     PERL_ARGS_ASSERT_PARSE_UNIPROP_STRING;
 
+    /* The input will be modified into 'lookup_name' */
     Newx(lookup_name, len, char);
     SAVEFREEPV(lookup_name);
+
+    /* Parse the input. */
     for (i = 0; i < len; i++) {
         char cur = name[i];
+
+        /* These characters can be freely ignored in most situations.  Later it
+         * may turn out we shouldn't have ignored them, and we have to reparse,
+         * but we don't have enough information yet to make that decision */
         if (cur == '-' || cur == '_' || isSPACE(cur)) {
             continue;
         }
 
+        /* Case differences are also ignored.  Our lookup routine assumes
+         * everything is lowercase */
         if (isUPPER(cur)) {
             lookup_name[j++] = toLOWER(cur);
             continue;
         }
 
+        /* A double colon is either an error, or a package qualifier to a
+         * subroutine user-defined property; neither of which do we currently
+         * handle
+         *
+         * But a single colon is a synonym for '=' */
         if (cur == ':') {
             if (i < len - 1 && name[i+1] == ':') {
                 return NULL;
@@ -5949,15 +5975,21 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
             cur = '=';
         }
 
+        /* Otherwise, this character is part of the name. */
         lookup_name[j++] = cur;
 
-        if (cur != '=') {
-            continue;
+        /* Only the equals sign needs further processing */
+        if (cur == '=') {
+            equals_pos = j; /* Note where it occurred in the input */
+            break;
         }
+    }
 
-        equals_pos = j;
+    /* Here, we are either done with the whole property name, if it was simple;
+     * or are positioned just after the '=' if it is compound. */
 
-        assert(! stricter);
+    if (equals_pos >= 0) {
+        assert(! stricter); /* We shouldn't have set this yet */
 
         /* Space immediately after the '=' is ignored */
         i++;
@@ -5967,20 +5999,38 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
             }
         }
 
+        /* Certain properties need special handling.  They may optionally be
+         * prefixed by 'is'.  Ignore that prefix for the purposes of checking
+         * if this is one of those properties */
         if (memBEGINPs(lookup_name, len, "is")) {
             lookup_offset = 2;
         }
 
-        if (   memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "canonicalcombiningclass")
-            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "ccc")
-            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "numericvalue")
-            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "nv")
-            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "age")
-            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "in")
-            || memEQs(lookup_name + lookup_offset, j - 1 - lookup_offset, "presentin"))
+        /* Then check if it is one of these properties. */
+        if (   memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "canonicalcombiningclass")
+            || memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "ccc")
+            || memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "numericvalue")
+            || memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "nv")
+            || memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "age")
+            || memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "in")
+            || memEQs(lookup_name + lookup_offset,
+                      j - 1 - lookup_offset, "presentin"))
         {
             unsigned int k;
 
+            /* What makes these properties special is that the stuff after the
+             * '=' is a number.  Therefore, we can't throw away '-'
+             * willy-nilly, as those could be a minus sign.  Other stricter
+             * rules also apply.  However, these properties all can have the
+             * rhs not be a number, in which case they contain at least one
+             * alphabetic.  In those cases, the stricter rules don't apply.  We
+             * first parse to look for alphas */
             stricter = TRUE;
             for (k = i; k < len; k++) {
                 if (isALPHA(name[k])) {
@@ -5991,6 +6041,9 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
         }
 
         if (stricter) {
+
+            /* A number may have a leading '+' or '-'.  The latter is retained
+             * */
             if (name[i] == '+') {
                 i++;
             }
@@ -5999,7 +6052,9 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
                 i++;
             }
 
-            /* Skip leading zeros including underscores separating digits */
+            /* Skip leading zeros including single underscores separating the
+             * zeros, or between the final leading zero and the first other
+             * digit */
             for (; i < len - 1; i++) {
                 if (   name[i] != '0'
                     && (name[i] != '_' || ! isDIGIT(name[i+1])))
@@ -6008,33 +6063,34 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
                 }
             }
         }
-
-        break;
     }
+    else {  /* No '=' */
 
-    /* Here, we are either done with the whole property name, if it was simple;
-     * or are positioned to look at the rhs if it is compound.  Parse the
-     * latter case.  And in the former case, first see if it is a property that
-     * has stricter parsing rules, and if so we need to reparse using those.
-     * These are hard-coded here, and inspection has shown that they can't be
-     * confused with something else, so it's ok to ascertain that a strict form
-     * was meant while looking at the loose result */
-
-    if (       equals_pos < 0
-        && (   (   memBEGINPs(lookup_name, j, "perl")
+       /* We are now in a position to determine if this property should have
+        * been parsed using stricter rules.  Only a few are like that, and
+        * unlikely to change. */
+        if (   (   memBEGINPs(lookup_name, j, "perl")
                 && memNEs(lookup_name + 4, j - 4, "space")
                 && memNEs(lookup_name + 4, j - 4, "word"))
             || memEQs(lookup_name, j, "canondcij")
-            || memEQs(lookup_name, j, "caseignorable")
-            || memEQs(lookup_name, j, "combabove")))
-    {
-        stricter = TRUE;
-        i = j = 0;
+            || memEQs(lookup_name, j, "combabove"))
+        {
+            stricter = TRUE;
+
+            /* We set the inputs back to 0 and the code below will reparse,
+             * using strict */
+            i = j = 0;
+        }
     }
 
+    /* Here, we have either finished the property, or are positioned to parse
+     * the remainder, and we know if stricter rules apply.  Finish out, if not
+     * already done */
     for (; i < len; i++) {
         char cur = name[i];
 
+        /* In all instances, case differences are ignored, and we normalize to
+         * lowercase */
         if (isUPPER(cur)) {
             lookup_name[j++] = toLOWER(cur);
             continue;
@@ -6052,6 +6108,7 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
             continue;
         }
 
+        /* Hyphens are skipped except under strict */
         if (cur == '-' && ! stricter) {
             continue;
         }
@@ -6067,9 +6124,13 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
 
         /* A slash in the 'numeric value' property indicates that what follows
          * is a denominator.  It can have a leading '+' and '0's that should be
-         * skipped */
-        if (cur == '/' && (   memEQs(lookup_name + lookup_offset, equals_pos - lookup_offset, "nv=")
-                           || memEQs(lookup_name + lookup_offset, equals_pos - lookup_offset, "numericvalue=")))
+         * skipped.  But we have never allowed a negative denominator, so treat
+         * a minus like every other character */
+        if (cur == '/' && (   memEQs(lookup_name + lookup_offset,
+                                     equals_pos - lookup_offset, "nv=")
+                           || memEQs(lookup_name + lookup_offset,
+                                     equals_pos - lookup_offset,
+                                     "numericvalue=")))
         {
             i++;
             if (i < len && name[i] == '+') {
@@ -6090,7 +6151,10 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
         }
     }
 
-    /* This special case is grandfathered in: 'L_' and 'GC=L_' are accepted and
+    /* Here are completely done parsing the input 'name', and 'lookup_name'
+     * contains a copy, normalized.
+     *
+     * This special case is grandfathered in: 'L_' and 'GC=L_' are accepted and
      * different from without the underscores.  */
     if (  (   UNLIKELY(memEQs(lookup_name, j, "l"))
             || UNLIKELY(memEQs(lookup_name, j, "gc=l")))
@@ -6098,11 +6162,13 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
     {
         lookup_name[j++] = '&';
     }
-    else if (   len > 2
-                && name[0] == 'I'
-                && (   name[1] == 'n'
-                    || name[1] == 's'))
+    else if (len > 2 && name[0] == 'I' && (   name[1] == 'n' || name[1] == 's'))
     {
+
+        /* Also, if the original input began with 'In' or 'Is', it could be a
+         * subroutine call instead of a property names, which currently isn't
+         * handled by this function.  Subroutine calls can't happen if there is
+         * an '=' in the name */
         if (equals_pos < 0 && get_cvn_flags(name, len, GV_NOTQUAL) != NULL) {
             return NULL;
         }
@@ -6125,8 +6191,9 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
         }
     }
 
-    /* A negative return signifies that the real index is the absolute value,
-     * but the result needs to be inverted */
+    /* The return is an index into a table of ptrs.  A negative return
+     * signifies that the real index is the absolute value, but the result
+     * needs to be inverted */
     if (table_index < 0) {
         *invert = TRUE;
         table_index = -table_index;
@@ -6148,6 +6215,8 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
                 (int) len, name, deprecated_property_msgs[warning_offset]);
     }
 
+    /* In a few properties, a different property is used under /i.  These are
+     * unlikely to change, so are hard-coded here. */
     if (to_fold) {
         if (   table_index == PL_UPPER
             || table_index == PL_LOWER
@@ -6168,6 +6237,7 @@ Perl_parse_uniprop_string(pTHX_ const char * const name, const Size_t len, const
         }
     }
 
+    /* Create and return the inversion list */
     return _new_invlist_C_array(PL_uni_prop_ptrs[table_index]);
 }
 

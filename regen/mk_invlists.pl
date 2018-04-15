@@ -2713,9 +2713,7 @@ for my $charset (get_supported_code_pages()) {
         print $out_fh "\"\n};\n";
     }
 
-    switch_pound_if ('binary_property_tables', [ 'PERL_IN_UTF8_C',
-                                                 'PERL_IN_UNI_KEYWORDS_C',
-                                               ]);
+    switch_pound_if ('binary_property_tables', 'PERL_IN_UTF8_C');
 
     my @enums = sort values %enums;
 
@@ -2803,50 +2801,26 @@ my @sources = qw(regen/mk_invlists.pl
 read_only_bottom_close_and_rename($out_fh, \@sources);
 
 #use Devel::Tokenizer::C;
-require '/usr/local/share/perl/5.24.1/Devel/Tokenizer/C.pm';
+require './regen/mph.pl';
 
 sub token_name
 {
     my $name = sanitize_name(shift);
     warn "$name contains non-word" if $name =~ /\W/a;
 
-    return "return $table_name_prefix\U$name;\n"
+    return "$table_name_prefix\U$name"
 }
 
-my $t = Devel::Tokenizer::C->new(TokenFunc => \&token_name,
-                                 StringLength  => 'len',
-                                 Strategy      => 'narrow',
-                                 TokenEnd      =>  undef,
-                                 UnknownCode   => 'return 0;',
-        );
- 
-print STDERR __LINE__, Dumper \@keywords;
-$t->add_tokens(lc $_) for @keywords;
- 
-my $keywords_fh = open_new('uni_keywords.c', '>',
+my $keywords_fh = open_new('uni_keywords.h', '>',
 		  {style => '*', by => 'regen/mk_invlists.pl',
                   from => "Unicode::UCD"});
-
-print $keywords_fh <<EOF;
-
-#define PERL_IN_UNI_KEYWORDS_C
-
-#include "EXTERN.h"
-#include "perl.h"
-
-int
-Perl_uniprop_lookup(const char * tokstr, const Size_t len)
-{
-
-    PERL_ARGS_ASSERT_UNIPROP_LOOKUP;
-
-EOF
-
-print $keywords_fh $t->generate;
-
-print $keywords_fh <<EOF;
-
+my %keyword_hash;
+foreach my $keyword (@keywords) {
+    #print STDERR __LINE__, ": $keyword\n";
+    $keyword_hash{$keyword} = token_name($keyword);
 }
-EOF
+
+my ($second_level, $seed1, $long_blob, $smart_blob, $rows, undef, undef) = MinimalPerfectHash::make_mph_from_hash(\%keyword_hash);
+print $keywords_fh MinimalPerfectHash::make_algo($second_level, $seed1, $long_blob, $smart_blob, $rows, 'uniprops_blob', 'mph_entry', 'mph_keywords', 'match_uniprop' );
 
 read_only_bottom_close_and_rename($keywords_fh, \@sources);

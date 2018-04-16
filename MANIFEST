@@ -6068,7 +6068,7 @@ toke.c				The tokener
 uconfig.h			Configuration header for microperl
 uconfig.sh			Configuration script for microperl
 uconfig64.sh			Configuration script for microperl for LP64
-unikeywords.h		        Map unicode property names to numbers
+uni_keywords.h		        Map unicode property names to numbers
 unicode_constants.h		compile-time macros for Unicode code points
 universal.c			The default UNIVERSAL package methods
 unixish.h			Defines that are assumed on Unix

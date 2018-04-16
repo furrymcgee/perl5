@@ -15,7 +15,7 @@ ref length: 52056
 data size: 62859 (%68.77)
 */
 
-STATIC const unsigned char uniprops_blob[] = 
+STATIC const unsigned char uniprops_blob[] =
     "block=unifiedcanadianaboriginalsyllabicsextendeddicsyllabiccatego"
     "ry=consonantsucceedingrephaindicsyllabiccategory=consonantprecpos"
     "itionalcategory=topandbottomandrightiscjkcompatibilityideographss"

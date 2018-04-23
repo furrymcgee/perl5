@@ -1,0 +1,64 @@
+diff --git a/MANIFEST b/MANIFEST
+index 82f0669bfd..72706310f9 100644
+--- a/MANIFEST
++++ b/MANIFEST
+@@ -830,7 +830,6 @@ cpan/ExtUtils-MakeMaker/t/META_for_testing.yml				test data for MakeMaker
+ cpan/ExtUtils-MakeMaker/t/META_for_testing_tricky_version.yml				test data for MakeMaker
+ cpan/ExtUtils-MakeMaker/t/metafile_data.t			See if META.yml handling works
+ cpan/ExtUtils-MakeMaker/t/metafile_file.t			See if META.yml handling works
+-cpan/ExtUtils-MakeMaker/t/min_perl_version.t			Test the MIN_PERL_VERSION argument to WriteMakefile.
+ cpan/ExtUtils-MakeMaker/t/miniperl.t				Test MakeMaker with miniperl
+ cpan/ExtUtils-MakeMaker/t/Mkbootstrap.t				See if ExtUtils::Mkbootstrap works
+ cpan/ExtUtils-MakeMaker/t/MM_Any.t				See if ExtUtils::MM_Any works
+@@ -849,15 +848,12 @@ cpan/ExtUtils-MakeMaker/t/PL_FILES.t				Test PL_FILES in MakeMaker
+ cpan/ExtUtils-MakeMaker/t/pm.t					See if MakeMaker can handle PM
+ cpan/ExtUtils-MakeMaker/t/pm_to_blib.t				Test for ExtUtils::MakeMaker
+ cpan/ExtUtils-MakeMaker/t/pod2man.t				See if MakeMaker can handle no pod2man
+-cpan/ExtUtils-MakeMaker/t/postamble.t				See if postamble works
+ cpan/ExtUtils-MakeMaker/t/prefixify.t				See if MakeMaker can apply a PREFIX
+-cpan/ExtUtils-MakeMaker/t/prereq.t				See if MakeMaker works
+ cpan/ExtUtils-MakeMaker/t/prereq_print.t				See if PREREQ_PRINT works
+ cpan/ExtUtils-MakeMaker/t/problems.t				How MakeMaker reacts to build problems
+ cpan/ExtUtils-MakeMaker/t/prompt.t				See if E::MM::prompt() works
+ cpan/ExtUtils-MakeMaker/t/recurs.t				See if recursive builds work
+ cpan/ExtUtils-MakeMaker/t/revision.t				See if $Revision is correct
+-cpan/ExtUtils-MakeMaker/t/several_authors.t			See if multiple AUTHORs work
+ cpan/ExtUtils-MakeMaker/t/split_command.t			See if MM's xargs-like function works
+ cpan/ExtUtils-MakeMaker/t/test_boilerplate.t			MakeMaker test
+ cpan/ExtUtils-MakeMaker/t/testdata/reallylongdirectoryname/arch1/Config.pm	test data for MakeMaker
+@@ -865,9 +861,7 @@ cpan/ExtUtils-MakeMaker/t/testdata/reallylongdirectoryname/arch2/Config.pm	test
+ cpan/ExtUtils-MakeMaker/t/testlib.t				See if ExtUtils::testlib works
+ cpan/ExtUtils-MakeMaker/t/unicode.t
+ cpan/ExtUtils-MakeMaker/t/VERSION_FROM.t			See if MakeMaker's VERSION_FROM works
+-cpan/ExtUtils-MakeMaker/t/vstrings.t
+ cpan/ExtUtils-MakeMaker/t/WriteEmptyMakefile.t			See if WriteEmptyMakefile works
+-cpan/ExtUtils-MakeMaker/t/writemakefile_args.t			See if WriteMakefile works
+ cpan/ExtUtils-Manifest/lib/ExtUtils/Manifest.pm			Utilities to write MANIFEST files
+ cpan/ExtUtils-Manifest/lib/ExtUtils/MANIFEST.SKIP		The default MANIFEST.SKIP
+ cpan/ExtUtils-Manifest/t/Manifest.t				See if ExtUtils::Manifest works
+diff --git a/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm b/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
+index fe53be12ef..9de7bba469 100644
+--- a/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
++++ b/cpan/ExtUtils-MakeMaker/lib/ExtUtils/MM_Unix.pm
+@@ -2772,21 +2772,6 @@ $(OBJECT) : $(FIRST_MAKEFILE)
+         # Inherited from win32/buildext.pl
+         $cross = "-MCross=$::Cross::platform ";
+     }
+-    $m .= sprintf <<'MAKE_FRAG', $newer_than_target, $cross, $mpl_args;
+-# We take a very conservative approach here, but it's worth it.
+-# We move Makefile to Makefile.old here to avoid gnu make looping.
+-$(FIRST_MAKEFILE) : Makefile.PL $(CONFIGDEP)
+-	$(NOECHO) $(ECHO) "Makefile out-of-date with respect to %s"
+-	$(NOECHO) $(ECHO) "Cleaning current config before rebuilding Makefile..."
+-	-$(NOECHO) $(RM_F) $(MAKEFILE_OLD)
+-	-$(NOECHO) $(MV)   $(FIRST_MAKEFILE) $(MAKEFILE_OLD)
+-	- $(MAKE) $(USEMAKEFILE) $(MAKEFILE_OLD) clean $(DEV_NULL)
+-	$(PERLRUN) %sMakefile.PL %s
+-	$(NOECHO) $(ECHO) "==> Your Makefile has been rebuilt. <=="
+-	$(NOECHO) $(ECHO) "==> Please rerun the $(MAKE) command.  <=="
+-	$(FALSE)
+-
+-MAKE_FRAG
+ 
+     return $m;
+ }
